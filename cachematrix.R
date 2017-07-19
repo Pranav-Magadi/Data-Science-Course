@@ -8,14 +8,14 @@
 ## and getinverse gets it. these 4 functions are returned as a list.
 
 makeCacheMatrix <- function(x = matrix()) {
-inverse<-NULL
+invcache<-NULL
 setmatrix<-function(y) {
   x<<-y
-  inverse<<-NULL
+  invcache<<-NULL
 }
 getmatrix<-function() x
-setinverse<-function(x){inverse<<-solve(x)}
-getinverse<- function() inverse
+setinverse<-function(inverse){invcache<<-inverse}
+getinverse<- function() invcache
 list(setmatrix = setmatrix, getmatrix = getmatrix,
      setinverse = setinverse,
      getinverse = getinverse)
