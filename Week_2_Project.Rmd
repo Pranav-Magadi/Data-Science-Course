@@ -1,0 +1,139 @@
+---
+title: "Reproducible Research Assignment"
+author: "Pranav Magadi"
+output: html_document
+---
+This report describes how I completed the Week 2 course project for the course Reproducible Research. It consists of getting data from an online source and performing some analyses on it. Every step of the process with accompanying code and output is described in this report.
+
+***
+
+###Loading the data
+
+The following code downloads the data into the working directory, extracts it, and reads it into R. The first 6 rows are also displayed as the output.
+```{r}
+url<-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+destfile<-paste(getwd(),"/data.zip",sep="")
+download.file(url,destfile)
+unzip("data.zip")
+rawdata<-read.csv(as.character(unzip("data.zip",list=TRUE)$Name))
+head(rawdata)
+```
+
+###What is the mean total number of steps taken per day?
+
+We first make a histogram plot of the total number of steps taken each day.
+```{r}
+steps_per_day<-tapply(rawdata$steps,rawdata$date,sum, na.rm = TRUE)
+hist(steps_per_day,xlab ="Total Number of Steps Taken in a Day", main = "Histogram of Steps taken per Day")
+```
+
+Then we calculate the mean
+```{r}
+mean(steps_per_day)
+```
+and the median
+```{r}
+median(steps_per_day)
+```
+
+###What is the average daily activity pattern?
+
+We make a time series plot of the 5-minute interval and the average number of steps taken, averaged across all days.
+
+```{r}
+avg_steps<-tapply(rawdata$steps,rawdata$interval,mean,na.rm=TRUE)
+plot(avg_steps~levels(as.factor(rawdata$interval)),type="l",xlab="5-minute interval",ylab="Average number of steps taken",main="Time Series Plot")
+```
+
+The interval with, on average, the maximum number of steps is
+```{r}
+avg_steps[avg_steps==max(avg_steps)]
+```
+So the 835-840 interval has the maximum number of steps (206) on average.
+
+###Missing Values
+
+The total number of missing values in the data set is
+```{r}
+missing<-is.na(rawdata$steps)
+sum(missing)
+```
+
+We will now replace the missing values with the value of the preceding interval. For example, if the value for the 340th interval is missing, we will put in the value of the 339th interval. 
+```{r}
+newdata<-rawdata
+newdata$steps[1]<-0
+for(i in 2:length(rawdata$steps)){
+  if(is.na(rawdata$steps[i])){
+    newdata$steps[i]<-newdata$steps[i-1]
+  }
+}
+```
+
+We make a new histogram of the total steps taken each day.
+```{r}
+newsteps_per_day<-tapply(newdata$steps,newdata$date,sum, na.rm = TRUE)
+hist(newsteps_per_day,xlab ="Total Number of Steps Taken in a Day", main = "Histogram of Steps taken per Day")
+```
+
+Then we re-calculate the mean
+```{r}
+mean(newsteps_per_day)
+```
+and the median
+```{r}
+median(newsteps_per_day)
+```
+
+There are no changes in the mean and median, and the histograms appear to be identical.
+
+###Are there differences in activity patterns between weekdays and weekends?
+
+First we will add another column for the day, and then convert the column values to weekday or weekend.
+```{r}
+newdata$day<-weekdays(as.Date(newdata$date))
+for(i in 1:length(newdata$day)){
+  if(newdata$day[i] %in% c("Saturday","Sunday")) 
+    newdata$day[i]<-"Weekend"
+  else
+    newdata$day[i]<-"Weekday"
+}
+```
+
+Calculate the average steps taken in an interval separately for weekdays and weekends and then combine.
+```{r}
+weekend<-subset(newdata,day=="Weekend")
+weekday<-subset(newdata,day=="Weekday")
+avg_steps_weekend<-aggregate(weekend$steps,list(weekend$interval),mean)
+avg_steps_weekday<-aggregate(weekday$steps,list(weekday$interval),mean)
+colnames(avg_steps_weekend)<-c("interval","Weekend_Steps")
+colnames(avg_steps_weekday)<-c("interval","Weekday_Steps")
+library(reshape2)
+final_data<-merge(avg_steps_weekday,avg_steps_weekend)
+final_data<-melt(final_data, id = "interval")
+colnames(final_data)<-c("interval","variable","avg_steps")
+head(final_data,n=3)
+```
+
+Now we will create a panel plot containing a time series plot of the 5-minute interval and the average number of steps taken, avergaed across all weekday days or weekend days.
+```{r}
+library(ggplot2)
+ggplot(final_data,aes(interval,avg_steps))+geom_line()+facet_grid(variable~.)
+```
+
+The difference in activity patterns is clearly visible between weekdays and weekends.
+
+***
+
+
+
+
+
+
+
+
+
+
+
+
+
